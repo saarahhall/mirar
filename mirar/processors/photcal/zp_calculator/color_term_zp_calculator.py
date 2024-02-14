@@ -8,6 +8,7 @@ from typing import Callable
 import numpy as np
 from astropy.table import Table
 from scipy.odr import ODR, Model, RealData
+import matplotlib.pyplot as plt
 
 from mirar.data import Image
 from mirar.processors.photcal.zp_calculator.base_zp_calculator import (
@@ -80,6 +81,26 @@ class ZPWithColorTermCalculator(
                 + matched_ref_cat[color_err_colnames[1]] ** 2
             )
 
+            # if self.reject_galaxies: (spread_model)
+            # cutoff = 0.0015
+            # ind_pos = np.where(matched_img_cat['SPREAD_MODEL'] > cutoff)[0]
+            # ind_neg = np.where(matched_img_cat['SPREAD_MODEL'] < 0)[0]
+            # bad_tabs = matched_img_cat[ind_pos], matched_ref_cat[ind_pos]
+            # print('sources removed based on spread_model: ', bad_tabs[0])
+            # negative_tabs = matched_img_cat[ind_neg], matched_ref_cat[ind_neg]
+            # points that are unlikely galaxies
+            # ind_nearzero = np.where(matched_img_cat['SPREAD_MODEL'] < cutoff)[0]
+            # y_notgal = matched_ref_cat[ind_nearzero]["magnitude"] - matched_img_cat[ind_nearzero][colname]
+            # x_notgal = matched_ref_cat[ind_nearzero][color_colnames[0]] - matched_ref_cat[ind_nearzero][color_colnames[1]]
+            # y_err_notgal = np.sqrt(
+            #    matched_img_cat[ind_nearzero][colname.replace("MAG", "MAGERR")] ** 2
+            #    + matched_ref_cat[ind_nearzero]["magnitude_err"] ** 2
+            # )
+            # x_err_notgal = np.sqrt(
+            #    matched_ref_cat[ind_nearzero][color_err_colnames[0]] ** 2
+            #    + matched_ref_cat[ind_nearzero][color_err_colnames[1]] ** 2
+            # )
+
             # use scipy.odr to fit a line to data with x and y uncertainties
             ## setup: remove sources with 0 uncertainty (or else scipy.odr won't work)
             where_zero_y = np.where(np.array(y_err) == 0)[0]
@@ -111,5 +132,33 @@ class ZPWithColorTermCalculator(
             image[f"ZP_{aperture}_nstars"] = len(matched_ref_cat)
             image[f"C_{aperture}"] = color
             image[f"C_{aperture}_std"] = color_err
+
+            y_fit = line_func(out.beta, x)
+            # plot invisible point so label (scatter statistic) appears in legend
+            scatter_xy = np.std((out.beta[0] * x) - y)
+
+            fig, ax = plt.subplots(nrows=1, ncols=1)
+            ax.errorbar(x, y, yerr=y_err, xerr=x_err, fmt='ko', label='all sources')
+            ax.set_xlabel(f'{color_colnames[0]} - {color_colnames[1]} color')
+            magname = color_err_colnames[0].split('_')[1]
+            ax.set_ylabel(f'PS1 {magname} - SEDMv2 {colname}')
+            ax.set_title(f'using {colname}')
+
+            ax.plot(x, y_fit, ls='-', label=f'ODR fit c={out.beta[0]:.3f}$\pm${color_err:.3f}, '
+                                            f'zp={out.beta[1]:.3f}$\pm${zp_err:.3f}', c='hotpink', lw=3, alpha=0.5)
+            ax.plot(x[0], y_fit[0], alpha=0, label=f'$\sigma$_y={scatter_xy:.5f}')
+
+            # spread_model cuts
+            # ax.plot(bad_tabs[1][color_colnames[0]] - bad_tabs[1][color_colnames[1]],
+            #        bad_tabs[1]["magnitude"] - bad_tabs[0][colname],
+            #        '*', c='orchid', ms=20, alpha=0.4, label=f'spread_model>{cutoff}')
+            # ax.plot(x_notgal, (color_notgal * x_notgal) + zero_point_notgal,
+            #        label=f'fit notgal: c={color_notgal:.3f}$\pm${color_err_notgal:.3f}, '
+            #                                           f'zp={zero_point_notgal:.3f}$\pm${zp_err_notgal:.3f}', c='orchid')
+            ax.legend()
+
+
+            fig.savefig(f'/Users/saarahhall/Desktop/{colname}.png')  # save the figure to file
+            plt.close(fig)
 
         return image

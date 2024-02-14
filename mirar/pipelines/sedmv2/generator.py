@@ -4,6 +4,7 @@ for SEDMv2
 """
 
 import logging
+from astropy.table import Table
 
 from mirar.catalog import BaseCatalog, Gaia2Mass
 from mirar.catalog.vizier import PS1, SkyMapper
@@ -20,7 +21,7 @@ from mirar.references import BaseReferenceGenerator, PS1Ref, SDSSRef
 
 logger = logging.getLogger(__name__)
 
-
+# generators -
 def sedmv2_astrometric_catalog_generator(image: Image) -> Gaia2Mass:
     """
     Returns an astrometric catalog for sedmv2,
@@ -104,6 +105,7 @@ def sedmv2_reference_image_generator(image: Image) -> BaseReferenceGenerator:
     return PS1Ref(filter_name=filter_name)
 
 
+# astromatic-related -
 def sedmv2_reference_image_resampler(**kwargs) -> Swarp:
     """
     Generates a resampler for reference images
@@ -146,7 +148,7 @@ def sedmv2_reference_psfex(output_sub_dir: str, norm_fits: bool) -> PSFex:
         norm_fits=norm_fits,
     )
 
-
+# purifiers -
 def sedmv2_zogy_catalogs_purifier(sci_catalog, ref_catalog):
     """
     TODO: This should be in sedmv2?
@@ -168,6 +170,60 @@ def sedmv2_zogy_catalogs_purifier(sci_catalog, ref_catalog):
     return good_sci_sources, good_ref_sources
 
 
+def sedmv2_photcal_img_catalog_purifier(catalog: Table, image: Image) -> Table:
+    """
+    To hand to PhotCalibrator image_photometric_catalog_purifier; remove sources with 0 error
+        reported in ref catalog, sources with large spread model, likely galaxies (kron),
+        outliers (-99 value in PS1), {... #TODO: fill this in}
+    Args:
+        sci_catalog:
+        ref_catalog:
+        color_err_colnames:
+
+    Returns: #TODO: fill this in
+    """
+
+    # things from default sextractor purifier
+    # PREREQ: SWARP HAS BEEN RUN. so i can cut based on the resampled x and y
+
+    # remove sources close to edge
+    edge_width_pixels = 100
+    x_lower_limit = edge_width_pixels
+    x_upper_limit = image.get_data().shape[1] - edge_width_pixels
+    y_lower_limit = edge_width_pixels
+    y_upper_limit = image.get_data().shape[0] - edge_width_pixels
+
+    # remove sources close to masked region
+    # ...
+
+    # FWHM
+    # fwhm_threshold_arcsec = ...
+    clean_mask = (
+            (catalog["FLAGS"] == 0)  # TODO: find out what this is
+            & (catalog["MAG_PSF"] != 99)  # remove sources with faulty PSF meas.
+            #& (catalog["FWHM_WORLD"] < fwhm_threshold_arcsec / 3600.0)
+            & (catalog["X_IMAGE"] > x_lower_limit)
+            & (catalog["X_IMAGE"] < x_upper_limit)
+            & (catalog["Y_IMAGE"] > y_lower_limit)
+            & (catalog["Y_IMAGE"] < y_upper_limit)
+    )
+
+    # remove sources where PS1 reports 0 error (oops this is for ref
+    # error_cols = [col for col in ps1.colnames if col.startswith('e_')]
+    # diagnostic: the last error column is likely a magnitude error (not astrometry).
+    # good_ref_sources = (
+    # (ref_catalog["SNR_WIN"] > 5)
+    # & (ref_catalog["FWHM_WORLD"] < 5.0 / 3600)
+    # & (ref_catalog["FWHM_WORLD"] > 0.5 / 3600)
+    #        (ref_catalog[error_cols[-1]].mask == False)
+    # )
+    print(f'purifying...\n original catalog length = '
+          f'{len(catalog)}, \npure length = {len(catalog[clean_mask])}')
+
+    return catalog[clean_mask]
+
+
+# color corrections -
 def sedmv2_color_function_ps1(
     image: Image,
 ) -> tuple[tuple[str, str], tuple[str, str], tuple[float, float]]:

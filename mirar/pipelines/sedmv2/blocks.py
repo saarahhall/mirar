@@ -17,6 +17,7 @@ from mirar.pipelines.sedmv2.config import (
 from mirar.pipelines.sedmv2.config.constants import SEDMV2_PIXEL_SCALE
 from mirar.pipelines.sedmv2.generator import (
     sedmv2_color_function_ps1,
+    sedmv2_photcal_img_catalog_purifier,
     sedmv2_photometric_catalog_generator,
     sedmv2_reference_image_generator,
     sedmv2_reference_image_resampler,
@@ -257,6 +258,7 @@ all_phot_psfexsex_calibrate = [  # run phot on all sources in image
         zp_calculator=ZPWithColorTermCalculator(
             color_colnames_generator=sedmv2_color_function_ps1,
         ),
+        image_photometric_catalog_purifier=sedmv2_photcal_img_catalog_purifier,
     ),
     ImageSaver(
         output_dir_name="processed_after_psf",
