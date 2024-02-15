@@ -70,6 +70,28 @@ class ZPWithColorTermCalculator(
         colors = matched_ref_cat[color_colnames[0]] - matched_ref_cat[color_colnames[1]]
 
         for colname in colnames:
+
+            # (spread_model), indexes by tab
+            sm_cutoff = 0.0015
+            ind_pos = np.where(matched_img_cat['SPREAD_MODEL'] > sm_cutoff)[0]
+            bad_tabs = matched_img_cat[ind_pos], matched_ref_cat[ind_pos]
+            # points that are unlikely galaxies
+            ind_nearzero = np.where(matched_img_cat['SPREAD_MODEL'] < cutoff)[0]
+            y_notgal_sm = matched_ref_cat[ind_nearzero]["magnitude"] - matched_img_cat[ind_nearzero][colname]
+            x_notgal_sm = matched_ref_cat[ind_nearzero][color_colnames[0]] - matched_ref_cat[ind_nearzero][color_colnames[1]]
+            y_err_notgal_sm = np.sqrt(
+                matched_img_cat[ind_nearzero][colname.replace("MAG", "MAGERR")] ** 2
+                + matched_ref_cat[ind_nearzero]["magnitude_err"] ** 2
+            )
+            x_err_notgal_sm = np.sqrt(
+                matched_ref_cat[ind_nearzero][color_err_colnames[0]] ** 2
+                + matched_ref_cat[ind_nearzero][color_err_colnames[1]] ** 2
+            )
+
+            # (psf - kron), indexes by tab
+
+
+
             y = matched_ref_cat["magnitude"] - matched_img_cat[colname]
             x = colors
             y_err = np.sqrt(
@@ -81,41 +103,17 @@ class ZPWithColorTermCalculator(
                 + matched_ref_cat[color_err_colnames[1]] ** 2
             )
 
-            # if self.reject_galaxies: (spread_model)
-            # cutoff = 0.0015
-            # ind_pos = np.where(matched_img_cat['SPREAD_MODEL'] > cutoff)[0]
-            # ind_neg = np.where(matched_img_cat['SPREAD_MODEL'] < 0)[0]
-            # bad_tabs = matched_img_cat[ind_pos], matched_ref_cat[ind_pos]
-            # print('sources removed based on spread_model: ', bad_tabs[0])
-            # negative_tabs = matched_img_cat[ind_neg], matched_ref_cat[ind_neg]
-            # points that are unlikely galaxies
-            # ind_nearzero = np.where(matched_img_cat['SPREAD_MODEL'] < cutoff)[0]
-            # y_notgal = matched_ref_cat[ind_nearzero]["magnitude"] - matched_img_cat[ind_nearzero][colname]
-            # x_notgal = matched_ref_cat[ind_nearzero][color_colnames[0]] - matched_ref_cat[ind_nearzero][color_colnames[1]]
-            # y_err_notgal = np.sqrt(
-            #    matched_img_cat[ind_nearzero][colname.replace("MAG", "MAGERR")] ** 2
-            #    + matched_ref_cat[ind_nearzero]["magnitude_err"] ** 2
-            # )
-            # x_err_notgal = np.sqrt(
-            #    matched_ref_cat[ind_nearzero][color_err_colnames[0]] ** 2
-            #    + matched_ref_cat[ind_nearzero][color_err_colnames[1]] ** 2
-            # )
 
             # use scipy.odr to fit a line to data with x and y uncertainties
             ## setup: remove sources with 0 uncertainty (or else scipy.odr won't work)
-            where_zero_y = np.where(np.array(y_err) == 0)[0]
-            if len(where_zero_y) > 0:
-                y = np.delete(y, where_zero_y)
-                x = np.delete(x, where_zero_y)
-                y_err = np.delete(y_err, where_zero_y)
-                x_err = np.delete(x_err, where_zero_y)
-
-            where_zero_x = np.where(np.array(x_err) == 0)[0]
-            if len(where_zero_x) > 0:
-                y = np.delete(y, where_zero_x)
-                x = np.delete(x, where_zero_x)
-                y_err = np.delete(y_err, where_zero_x)
-                x_err = np.delete(x_err, where_zero_x)
+            zero_mask = (np.array(y_err) == 0) | (np.array(x_err) == 0)
+            if np.sum(zero_mask) != 0:
+                logger.debug(
+                    f"Found {np.sum(zero_mask)} source(s) with zero reported "
+                    f"uncertainty, removing them from calibrations."
+                )
+                x, y = x[~zero_mask], y[~zero_mask]
+                x_err, y_err = x_err[~zero_mask], y_err[~zero_mask]
 
             ## set up odr
             line_model = Model(line_func)
