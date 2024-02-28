@@ -172,15 +172,19 @@ def sedmv2_zogy_catalogs_purifier(sci_catalog, ref_catalog):
 
 def sedmv2_photcal_img_catalog_purifier(catalog: Table, image: Image) -> Table:
     """
-    To hand to PhotCalibrator image_photometric_catalog_purifier; remove sources with 0 error
-        reported in ref catalog, sources with large spread model, likely galaxies (kron),
-        outliers (-99 value in PS1), {... #TODO: fill this in}
+    To hand to PhotCalibrator image_photometric_catalog_purifier;
+        outliers (-99 value in PSF mags)
+        sources near edge of image
+        [pending] FWHM cut
+        [pending] sources near shadow edge
+        [pending] sources with large spread model, likely galaxies (kron),
+        ... # TODO: fill this in}
     Args:
         sci_catalog:
         ref_catalog:
         color_err_colnames:
 
-    Returns: #TODO: fill this in
+    Returns: # TODO: fill this in
     """
 
     # things from default sextractor purifier
@@ -208,19 +212,24 @@ def sedmv2_photcal_img_catalog_purifier(catalog: Table, image: Image) -> Table:
             & (catalog["Y_IMAGE"] < y_upper_limit)
     )
 
-    # remove sources where PS1 reports 0 error (oops this is for ref
-    # error_cols = [col for col in ps1.colnames if col.startswith('e_')]
-    # diagnostic: the last error column is likely a magnitude error (not astrometry).
-    # good_ref_sources = (
-    # (ref_catalog["SNR_WIN"] > 5)
-    # & (ref_catalog["FWHM_WORLD"] < 5.0 / 3600)
-    # & (ref_catalog["FWHM_WORLD"] > 0.5 / 3600)
-    #        (ref_catalog[error_cols[-1]].mask == False)
-    # )
     print(f'purifying...\n original catalog length = '
           f'{len(catalog)}, \npure length = {len(catalog[clean_mask])}')
 
     return catalog[clean_mask]
+
+
+def sedmv2_photcal_ref_catalog_purifier(catalog: Table, image: Image) -> Table:
+    # remove sources where PS1 reports 0 error
+    error_cols = [col for col in ps1.colnames if col.startswith('e_')]
+    # diagnostic: the last error column is likely a magnitude error (not astrometry).
+    good_ref_sources = (
+     (catalog["SNR_WIN"] > 5)
+     & (catalog["FWHM_WORLD"] < 5.0 / 3600)
+     & (catalog["FWHM_WORLD"] > 0.5 / 3600)
+     & (catalog[error_cols[-1]].mask == False)
+    )
+
+    return catalog[good_ref_sources]
 
 
 # color corrections -

@@ -4,6 +4,7 @@ Module for running photometric calibration
 
 import logging
 import warnings
+from mirar.utils.ldac_tools import get_table_from_ldac, save_table_as_ldac
 from collections.abc import Callable
 from pathlib import Path
 
@@ -181,6 +182,9 @@ class PhotCalibrator(BaseProcessorWithCrossMatch):
                 f"Cross-matched {len(matched_img_cat)} sources from catalog to "
                 "the image."
             )
+
+            save1 = save_table_as_ldac(matched_ref_cat, '/Users/saarahhall/Desktop/matched_ref.dat')
+            save2 = save_table_as_ldac(matched_img_cat, '/Users/saarahhall/Desktop/matched_img.dat')
 
             if len(matched_img_cat) < self.num_matches_threshold:
                 err = (
