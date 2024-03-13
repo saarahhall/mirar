@@ -12,6 +12,7 @@ from mirar.catalog import BaseCatalog, Gaia2Mass
 from mirar.catalog.vizier import PS1, SkyMapper
 from mirar.catalog.vizier.sdss import SDSS, NotInSDSSError, in_sdss
 from mirar.data.image_data import Image
+from mirar.data.utils import write_regions_file
 from mirar.pipelines.sedmv2.config import (
     psfex_config_path,
     sextractor_photometry_config,
@@ -203,14 +204,14 @@ def sedmv2_photcal_catalog_purifier(
 
     ## science catalog cuts
     # remove sources close to edge
-    edge_width_pixels = 100
-    x_lower_limit = edge_width_pixels
-    x_upper_limit = image.get_data().shape[1] - edge_width_pixels
-    y_lower_limit = edge_width_pixels
-    y_upper_limit = image.get_data().shape[0] - edge_width_pixels
+    # edge_width_pixels = 100
+    # x_lower_limit = edge_width_pixels
+    # x_upper_limit = image.get_data().shape[1] - edge_width_pixels
+    # y_lower_limit = edge_width_pixels
+    # y_upper_limit = image.get_data().shape[0] - edge_width_pixels
 
     # remove sources with spread_model > sm_cutoff (they are likely galaxies)
-    sm_cutoff = 0.0015
+    sm_cutoff = 0.0015  # 0.01
     # raise warning if most sources don't pass this cut
     ind_bad = np.where(sci_catalog["SPREAD_MODEL"] > sm_cutoff)[0]
     if (len(sci_catalog[ind_bad]) / len(sci_catalog)) > 0.4:
@@ -221,15 +222,51 @@ def sedmv2_photcal_catalog_purifier(
         )
 
     good_sci_sources = (
-        (sci_catalog["FLAGS"] == 0)
-        & (sci_catalog["MAG_PSF"] != 99)
-        & (sci_catalog["X_IMAGE"] > x_lower_limit)
-        & (sci_catalog["X_IMAGE"] < x_upper_limit)
-        & (sci_catalog["Y_IMAGE"] > y_lower_limit)
-        & (sci_catalog["Y_IMAGE"] < y_upper_limit)
-        & (sci_catalog["SPREAD_MODEL"] < sm_cutoff)
+        #    (sci_catalog["FLAGS"] == 0)
+        #    & (sci_catalog["MAG_PSF"] != 99)
+        #    & (sci_catalog["X_IMAGE"] > x_lower_limit)
+        #    & (sci_catalog["X_IMAGE"] < x_upper_limit)
+        #    & (sci_catalog["Y_IMAGE"] > y_lower_limit)
+        #    & (sci_catalog["Y_IMAGE"] < y_upper_limit)
+        sci_catalog["SPREAD_MODEL"]
+        < sm_cutoff  # & (sci_catalog["SPREAD_MODEL"] < sm_cutoff)
     )
 
+    write_regions = True
+    if write_regions:
+        # output_catalog = get_table_from_ldac(output_cat)
+        output_catalog = sci_catalog[good_sci_sources]
+
+        x_coords = output_catalog["X_IMAGE"]
+        y_coords = output_catalog["Y_IMAGE"]
+
+        regions_path = "/Users/saarahhall/Desktop/sci_cat_sm_kept.reg"
+
+        write_regions_file(
+            regions_path=regions_path,
+            x_coords=x_coords,
+            y_coords=y_coords,
+            system="image",
+            region_radius=5,
+        )
+
+        output_catalog = sci_catalog[~good_sci_sources]
+        # output_catalog = get_table_from_ldac(output_cat)
+
+        x_coords = output_catalog["X_IMAGE"]
+        y_coords = output_catalog["Y_IMAGE"]
+
+        regions_path = "/Users/saarahhall/Desktop/sci_cat_sm_removed.reg"
+
+        write_regions_file(
+            regions_path=regions_path,
+            x_coords=x_coords,
+            y_coords=y_coords,
+            system="image",
+            region_radius=5,
+        )
+
+    print("frac_above = ", len(sci_catalog[~good_sci_sources]) / len(sci_catalog))
     logger.debug(
         f"Original science catalog length = "
         f"{len(sci_catalog)}, \npure length = {len(sci_catalog[good_sci_sources])}"

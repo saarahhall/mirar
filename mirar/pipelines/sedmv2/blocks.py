@@ -251,6 +251,7 @@ all_phot_psfexsex_calibrate = [  # run phot on all sources in image
         output_sub_dir="sextractor_after_psfex",
         checkimage_type="BACKGROUND_RMS",
         use_psfex=True,
+        write_regions_bool=True,
         **sextractor_PSF_photometry_config,
     ),  # Sextractor-based PSF mags, saves to catalog
     PhotCalibrator(
