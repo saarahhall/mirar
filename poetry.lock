@@ -1947,6 +1947,7 @@ description = "IPython: Productive Interactive Computing"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "python_version < \"3.11\""
 files = [
     {file = "ipython-8.35.0-py3-none-any.whl", hash = "sha256:e6b7470468ba6f1f0a7b116bb688a3ece2f13e2f94138e508201fad677a788ba"},
     {file = "ipython-8.35.0.tar.gz", hash = "sha256:d200b7d93c3f5883fc36ab9ce28a18249c7706e51347681f80a0aef9895f2520"},
@@ -1978,6 +1979,56 @@ parallel = ["ipyparallel"]
 qtconsole = ["qtconsole"]
 test = ["packaging", "pickleshare", "pytest", "pytest-asyncio (<0.22)", "testpath"]
 test-extra = ["curio", "ipython[test]", "jupyter_ai", "matplotlib (!=3.2.0)", "nbformat", "numpy (>=1.23)", "pandas", "trio"]
+
+[[package]]
+name = "ipython"
+version = "9.0.1"
+description = "IPython: Productive Interactive Computing"
+optional = false
+python-versions = ">=3.11"
+groups = ["main"]
+markers = "python_version >= \"3.11\""
+files = [
+    {file = "ipython-9.0.1-py3-none-any.whl", hash = "sha256:3e878273824b52e0a2280ed84f8193aba8c4ba9a6f45a438348a3d5ef1a34bd0"},
+    {file = "ipython-9.0.1.tar.gz", hash = "sha256:377ea91c8226b48dc9021ac9846a64761abc7ddf74c5efe38e6eb06f6e052f3a"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "sys_platform == \"win32\""}
+decorator = "*"
+ipython-pygments-lexers = "*"
+jedi = ">=0.16"
+matplotlib-inline = "*"
+pexpect = {version = ">4.3", markers = "sys_platform != \"win32\" and sys_platform != \"emscripten\""}
+prompt_toolkit = ">=3.0.41,<3.1.0"
+pygments = ">=2.4.0"
+stack_data = "*"
+traitlets = ">=5.13.0"
+typing_extensions = {version = ">=4.6", markers = "python_version < \"3.12\""}
+
+[package.extras]
+all = ["ipython[doc,matplotlib,test,test-extra]"]
+black = ["black"]
+doc = ["docrepr", "exceptiongroup", "intersphinx_registry", "ipykernel", "ipython[test]", "matplotlib", "setuptools (>=18.5)", "sphinx (>=1.3)", "sphinx-rtd-theme", "sphinx_toml (==0.0.4)", "typing_extensions"]
+matplotlib = ["matplotlib"]
+test = ["packaging", "pytest", "pytest-asyncio (<0.22)", "testpath"]
+test-extra = ["curio", "ipython[test]", "matplotlib (!=3.2.0)", "nbformat", "numpy (>=1.23)", "pandas", "trio"]
+
+[[package]]
+name = "ipython-pygments-lexers"
+version = "1.1.1"
+description = "Defines a variety of Pygments lexers for highlighting IPython code."
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+markers = "python_version >= \"3.11\""
+files = [
+    {file = "ipython_pygments_lexers-1.1.1-py3-none-any.whl", hash = "sha256:a9462224a505ade19a605f71f8fa63c2048833ce50abc86768a0d81d876dc81c"},
+    {file = "ipython_pygments_lexers-1.1.1.tar.gz", hash = "sha256:09c0138009e56b6854f9535736f4171d855c8c08a563a0dcd8022f78355c7e81"},
+]
+
+[package.dependencies]
+pygments = "*"
 
 [[package]]
 name = "ipywidgets"
@@ -3552,6 +3603,7 @@ description = "An Astropy package for source detection and photometry"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "python_version < \"3.11\""
 files = [
     {file = "photutils-2.0.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f2cb47f72c0661e2f71280899a28daf5bf820e1637618566df86be50b492faf2"},
     {file = "photutils-2.0.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:0c2ecbf659d2a7e72622486ef006fe95eb77bd23933a342a92f0d0d169680000"},
@@ -3580,6 +3632,40 @@ scipy = ">=1.10"
 [package.extras]
 all = ["bottleneck", "gwcs (>=0.19)", "matplotlib (>=3.7)", "rasterio", "regions (>=0.9)", "scikit-image (>=0.20)", "shapely", "tqdm"]
 docs = ["photutils[all]", "sphinx", "sphinx-astropy[confv2] (>=1.9.1)", "sphinx-design", "tomli ; python_version < \"3.11\""]
+test = ["pytest-astropy (>=0.11)", "pytest-xdist (>=2.5.0)"]
+
+[[package]]
+name = "photutils"
+version = "2.2.0"
+description = "An Astropy package for source detection and photometry"
+optional = false
+python-versions = ">=3.11"
+groups = ["main"]
+markers = "python_version >= \"3.11\""
+files = [
+    {file = "photutils-2.2.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:3cd722c993bda135ea84404391ffd214cba22609ceadf1dc1a73f0d36ce123f5"},
+    {file = "photutils-2.2.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:624a44dab6d77f3c8f8a505d768cc4c0102fa4eace41258e53afd9916a6a0b84"},
+    {file = "photutils-2.2.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:752fc5da64b7ba3e181ed37275ea5b418685ce417472bbec78fa56d058e0ab6f"},
+    {file = "photutils-2.2.0-cp311-cp311-win_amd64.whl", hash = "sha256:760df044bd2841e5967f8e21d9b98025a9169e48c69c3b94ae93aa7d626d06be"},
+    {file = "photutils-2.2.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:088600af5a6608accb26095d499ea3f897ffb112432dd792f91da91567b16886"},
+    {file = "photutils-2.2.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:a7c0e67d91b9bb2c2d8836ae789b0a6d6ab221011578e5ba0f75369b1197f20a"},
+    {file = "photutils-2.2.0-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4367095feaeb3f1048b0ca34bfc2fa233dfff1403af0d7795c4101be99585d1b"},
+    {file = "photutils-2.2.0-cp312-cp312-win_amd64.whl", hash = "sha256:2ec551ea83c90b7d9c2d3bd96e170fb62c62bd11e276042f4a7b8faab0734680"},
+    {file = "photutils-2.2.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:3f739cf5073ee400821267114a1d5ecdbef96ad482ec7fa079a9cf6ce5c094b8"},
+    {file = "photutils-2.2.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:66bd1c215f57c27be74fb43a1163c5b4761a22e7dbb25810e180360bb9e4bf93"},
+    {file = "photutils-2.2.0-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d3930e552416d77eb8d8d3db05d1f7743672398d1502ea0cbe17d43a337ca9d5"},
+    {file = "photutils-2.2.0-cp313-cp313-win_amd64.whl", hash = "sha256:cbd94d51035946ac61e6b9de80a7cc7ea9a8b9ff85d69a56e9f09c9ce463a85d"},
+    {file = "photutils-2.2.0.tar.gz", hash = "sha256:eb5b67f335df594c954605c9bcfc6808cc66361909b89776c3c95d920c722bc0"},
+]
+
+[package.dependencies]
+astropy = ">=5.3"
+numpy = ">=1.24"
+scipy = ">=1.10"
+
+[package.extras]
+all = ["bottleneck", "gwcs (>=0.20)", "matplotlib (>=3.7)", "rasterio", "regions (>=0.9)", "scikit-image (>=0.20)", "shapely", "tqdm"]
+docs = ["photutils[all]", "sphinx", "sphinx-astropy[confv2] (>=1.9.1)", "sphinx_design"]
 test = ["pytest-astropy (>=0.11)", "pytest-xdist (>=2.5.0)"]
 
 [[package]]
@@ -4777,6 +4863,23 @@ files = [
 ]
 
 [[package]]
+name = "roman-numerals-py"
+version = "3.1.0"
+description = "Manipulate well-formed Roman numerals"
+optional = false
+python-versions = ">=3.9"
+groups = ["dev"]
+markers = "python_version >= \"3.11\""
+files = [
+    {file = "roman_numerals_py-3.1.0-py3-none-any.whl", hash = "sha256:9da2ad2fb670bcf24e81070ceb3be72f6c11c440d73bd579fbeca1e9f330954c"},
+    {file = "roman_numerals_py-3.1.0.tar.gz", hash = "sha256:be4bf804f083a4ce001b5eb7e3c0862479d10f94c936f6c4e5f250aa5ff5bd2d"},
+]
+
+[package.extras]
+lint = ["mypy (==1.15.0)", "pyright (==1.1.394)", "ruff (==0.9.7)"]
+test = ["pytest (>=8)"]
+
+[[package]]
 name = "rpds-py"
 version = "0.24.0"
 description = "Python bindings to Rust's persistent data structures (rpds)"
@@ -5075,14 +5178,14 @@ win32 = ["pywin32 ; sys_platform == \"win32\""]
 
 [[package]]
 name = "setuptools"
-version = "75.8.0"
+version = "75.8.2"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "setuptools-75.8.0-py3-none-any.whl", hash = "sha256:e3982f444617239225d675215d51f6ba05f845d4eec313da4418fdbb56fb27e3"},
-    {file = "setuptools-75.8.0.tar.gz", hash = "sha256:c5afc8f407c626b8313a86e10311dd3f661c6cd9c09d4bf8c15c0e11f9f2b0e6"},
+    {file = "setuptools-75.8.2-py3-none-any.whl", hash = "sha256:558e47c15f1811c1fa7adbd0096669bf76c1d3f433f58324df69f3f5ecac4e8f"},
+    {file = "setuptools-75.8.2.tar.gz", hash = "sha256:4880473a969e5f23f2a2be3646b2dfd84af9028716d398e46192f84bc36900d2"},
 ]
 
 [package.extras]
@@ -5148,6 +5251,7 @@ description = "Python documentation generator"
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
+markers = "python_version < \"3.11\""
 files = [
     {file = "sphinx-8.1.3-py3-none-any.whl", hash = "sha256:09719015511837b76bf6e03e42eb7595ac8c2e41eeb9c29c5b755c6b677992a2"},
     {file = "sphinx-8.1.3.tar.gz", hash = "sha256:43c1911eecb0d3e161ad78611bc905d1ad0e523e4ddc202a58a821773dc4c927"},
@@ -5176,6 +5280,43 @@ tomli = {version = ">=2", markers = "python_version < \"3.11\""}
 docs = ["sphinxcontrib-websupport"]
 lint = ["flake8 (>=6.0)", "mypy (==1.11.1)", "pyright (==1.1.384)", "pytest (>=6.0)", "ruff (==0.6.9)", "sphinx-lint (>=0.9)", "tomli (>=2)", "types-Pillow (==10.2.0.20240822)", "types-Pygments (==2.18.0.20240506)", "types-colorama (==0.4.15.20240311)", "types-defusedxml (==0.7.0.20240218)", "types-docutils (==0.21.0.20241005)", "types-requests (==2.32.0.20240914)", "types-urllib3 (==1.26.25.14)"]
 test = ["cython (>=3.0)", "defusedxml (>=0.7.1)", "pytest (>=8.0)", "setuptools (>=70.0)", "typing_extensions (>=4.9)"]
+
+[[package]]
+name = "sphinx"
+version = "8.2.3"
+description = "Python documentation generator"
+optional = false
+python-versions = ">=3.11"
+groups = ["dev"]
+markers = "python_version >= \"3.11\""
+files = [
+    {file = "sphinx-8.2.3-py3-none-any.whl", hash = "sha256:4405915165f13521d875a8c29c8970800a0141c14cc5416a38feca4ea5d9b9c3"},
+    {file = "sphinx-8.2.3.tar.gz", hash = "sha256:398ad29dee7f63a75888314e9424d40f52ce5a6a87ae88e7071e80af296ec348"},
+]
+
+[package.dependencies]
+alabaster = ">=0.7.14"
+babel = ">=2.13"
+colorama = {version = ">=0.4.6", markers = "sys_platform == \"win32\""}
+docutils = ">=0.20,<0.22"
+imagesize = ">=1.3"
+Jinja2 = ">=3.1"
+packaging = ">=23.0"
+Pygments = ">=2.17"
+requests = ">=2.30.0"
+roman-numerals-py = ">=1.0.0"
+snowballstemmer = ">=2.2"
+sphinxcontrib-applehelp = ">=1.0.7"
+sphinxcontrib-devhelp = ">=1.0.6"
+sphinxcontrib-htmlhelp = ">=2.0.6"
+sphinxcontrib-jsmath = ">=1.0.1"
+sphinxcontrib-qthelp = ">=1.0.6"
+sphinxcontrib-serializinghtml = ">=1.1.9"
+
+[package.extras]
+docs = ["sphinxcontrib-websupport"]
+lint = ["betterproto (==2.0.0b6)", "mypy (==1.15.0)", "pypi-attestations (==0.0.21)", "pyright (==1.1.395)", "pytest (>=8.0)", "ruff (==0.9.9)", "sphinx-lint (>=0.9)", "types-Pillow (==10.2.0.20240822)", "types-Pygments (==2.19.0.20250219)", "types-colorama (==0.4.15.20240311)", "types-defusedxml (==0.7.0.20240218)", "types-docutils (==0.21.0.20241128)", "types-requests (==2.32.0.20241016)", "types-urllib3 (==1.26.25.14)"]
+test = ["cython (>=3.0)", "defusedxml (>=0.7.1)", "pytest (>=8.0)", "pytest-xdist[psutil] (>=3.4)", "setuptools (>=70.0)", "typing_extensions (>=4.9)"]
 
 [[package]]
 name = "sphinx-mdinclude"
