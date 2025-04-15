@@ -214,10 +214,7 @@ def load_raw_sedmv2_mef(
     Load mef image
     """
 
-    sedmv2_ignore_files = [
-        "sedm2",
-        "speccal",
-    ]
+    sedmv2_ignore_files = ["sedm2", "speccal", "pm", "point"]
 
     if any(ext in Path(path).name for ext in sedmv2_ignore_files):
         logger.debug(f"Skipping unneeded SEDMv2 file {path}.")
