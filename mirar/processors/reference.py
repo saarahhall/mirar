@@ -53,6 +53,9 @@ class ProcessReference(BaseImageProcessor):
         if self.phot_sextractor is None:
             self.phot_sextractor = self.sextractor
 
+    def description(self) -> str:
+        return "Prepare reference images for subtraction"
+
     def get_sub_output_dir(self) -> Path:
         """
         Get the output directory for the subtracted images.
@@ -222,9 +225,6 @@ class ProcessReference(BaseImageProcessor):
             self.save_fits(final_ref_image, resampled_ref_path)
 
             # Copy over header keys from ref to sci
-            # resampled_sci_image[REF_PSF_KEY] = resampled_ref_sextractor_img[
-            #     NORM_PSFEX_KEY
-            # ]
             resampled_sci_image[REF_IMG_KEY] = resampled_ref_sextractor_psfex_img[
                 LATEST_SAVE_KEY
             ]
@@ -250,11 +250,11 @@ class GetReferenceImage(BaseImageProcessor):
         self.ref_image_generator = ref_image_generator
         self.output_sub_dir = output_sub_dir
 
-    def __str__(self):
+    def description(self):
         output_sub_dir = get_output_dir(
             dir_root=self.output_sub_dir, sub_dir=self.night_sub_dir
         )
-        return f"Processor to get reference images and save them to {output_sub_dir}"
+        return f"Get reference images and save them to {output_sub_dir}"
 
     def _apply_to_images(
         self,

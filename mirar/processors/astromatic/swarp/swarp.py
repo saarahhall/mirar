@@ -17,6 +17,7 @@ from mirar.errors import ProcessorError
 from mirar.io import MissingCoreFieldError, check_image_has_core_fields
 from mirar.paths import (
     BASE_NAME_KEY,
+    COADD_KEY,
     EXPTIME_KEY,
     LATEST_SAVE_KEY,
     LATEST_WEIGHT_SAVE_KEY,
@@ -34,6 +35,12 @@ from mirar.processors.astromatic.swarp.swarp_wrapper import run_swarp
 from mirar.processors.base_processor import BaseImageProcessor
 
 logger = logging.getLogger(__name__)
+
+
+class TooFewCoaddsErrors(ProcessorError):
+    """
+    Error for when too few coadds are present
+    """
 
 
 class SwarpError(ProcessorError):
@@ -71,6 +78,7 @@ class Swarp(BaseImageProcessor):
         calculate_dims_in_swarp: bool = False,
         header_keys_to_combine: Optional[str | list[str]] = None,
         coordinate_tolerance_deg: float = 10,
+        min_required_coadds: int = 1,
     ):
         """
 
@@ -133,6 +141,7 @@ class Swarp(BaseImageProcessor):
             corresponding header keys to a comma-separated value in the stacked images
             coordinate_tolerance_deg: float Will raise an error if the input images are
             not within this tolerance of each other in terms of their coordinates.
+            min_required_coadds: int Minimum number of coadds required to run Swarp.
         """
         super().__init__()
         self.swarp_config = swarp_config_path
@@ -157,8 +166,9 @@ class Swarp(BaseImageProcessor):
         if isinstance(self.header_keys_to_combine, str):
             self.header_keys_to_combine = [self.header_keys_to_combine]
         self.coordinate_tolerance_deg = coordinate_tolerance_deg
+        self.min_required_coadds = min_required_coadds
 
-    def __str__(self) -> str:
+    def description(self) -> str:
         return "Processor to apply swarp to images, stacking them together."
 
     def get_swarp_output_dir(self) -> Path:
@@ -173,6 +183,11 @@ class Swarp(BaseImageProcessor):
         self,
         batch: ImageBatch,
     ) -> ImageBatch:
+        if len(batch) < self.min_required_coadds:
+            raise TooFewCoaddsErrors(
+                f"Too few coadds in batch, found {len(batch)}, "
+                f"required at least {self.min_required_coadds}"
+            )
         basenames = [x[BASE_NAME_KEY] for x in batch]
         sort_inds = np.argsort(basenames)
         batch = ImageBatch([batch[i] for i in sort_inds])
@@ -239,7 +254,9 @@ class Swarp(BaseImageProcessor):
         all_imgpixsizes = []
         all_ras = []
         all_decs = []
-
+        combined_header_dict = {
+            x: batch[0][x] for x in batch[0].keys() if x not in all_astrometric_keywords
+        }
         with open(swarp_image_list_path, "w", encoding="utf8") as img_list, open(
             swarp_weight_list_path, "w", encoding="utf8"
         ) as weight_list:
@@ -291,6 +308,7 @@ class Swarp(BaseImageProcessor):
                         f"Please use only one."
                     )
                     raise SwarpError(err)
+
                 if SWARP_FLUX_SCALING_KEY not in image.header.keys():
                     if self.flux_scaling_factor is None:
                         image[SWARP_FLUX_SCALING_KEY] = 1
@@ -299,17 +317,31 @@ class Swarp(BaseImageProcessor):
 
                 temp_img_path = get_temp_path(swarp_output_dir, image[BASE_NAME_KEY])
 
-                self.save_fits(image, temp_img_path)
+                self.save_fits(image, temp_img_path, compress=False)
 
                 logger.debug(f"Saving mask image for {temp_img_path}")
-                temp_mask_path = self.save_mask_image(image, temp_img_path)
+                temp_mask_path = self.save_mask_image(
+                    image, temp_img_path, compress=False
+                )
 
                 img_list.write(f"{temp_img_path}\n")
                 weight_list.write(f"{temp_mask_path}\n")
 
                 temp_files += [temp_img_path, temp_mask_path]
+
                 if self.include_scamp:
                     temp_files += [temp_head_path]
+
+                # Add missing keywords that are common in all input images to the
+                # header of resampled image, and save again
+                # Omit any astrometric keywords
+                tmp_dict = combined_header_dict.copy()
+                for key in combined_header_dict.keys():
+                    if key not in tmp_dict.keys():
+                        continue
+                    if image[key] != tmp_dict[key]:
+                        tmp_dict.pop(key)
+                combined_header_dict = tmp_dict
 
         if pixscale_to_use is None:
             pixscale_to_use = np.max(all_pixscales)
@@ -383,8 +415,6 @@ class Swarp(BaseImageProcessor):
             if temp_output_image_path.exists():
                 shutil.copy(temp_output_image_path, output_image_path)
                 shutil.copy(temp_output_image_weight_path, output_image_weight_path)
-                # temp_output_image_path.rename(output_image_path)
-                # temp_output_image_weight_path.rename(output_image_weight_path)
                 temp_files.append(temp_output_image_path)
                 temp_files.append(temp_output_image_weight_path)
             else:
@@ -394,7 +424,6 @@ class Swarp(BaseImageProcessor):
                 )
                 logger.error(err)
                 raise SwarpError(err)
-
         new_image = self.open_fits(output_image_path)
 
         # Swarp sets pixels with no data to 0, which is not ideal
@@ -404,25 +433,16 @@ class Swarp(BaseImageProcessor):
         img_data[mask] = np.nan
         new_image.set_data(img_data)
 
-        # Add missing keywords that are common in all input images to the
-        # header of resampled image, and save again
-        # Omit any astrometric keywords
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", AstropyWarning)
-            for key in batch[0].keys():
-                if np.any([key not in x.keys() for x in batch]):
-                    continue
-                if np.logical_and(
-                    np.sum([x[key] == batch[0][key] for x in batch]) == len(batch),
-                    key.strip() not in all_astrometric_keywords,
-                ):
-                    if key not in new_image.keys():
-                        try:
-                            new_image[key] = batch[0][key]
-                        except ValueError:
-                            continue
+            for key in combined_header_dict:
+                if key not in new_image.keys():
+                    try:
+                        new_image[key] = combined_header_dict[key]
+                    except ValueError:
+                        continue
 
-        new_image["COADDS"] = sum(x["COADDS"] for x in batch)
+        new_image[COADD_KEY] = sum(x[COADD_KEY] for x in batch)
         new_image[EXPTIME_KEY] = sum(float(x[EXPTIME_KEY]) for x in batch)
         new_image[TIME_KEY] = min(x[TIME_KEY] for x in batch)
 

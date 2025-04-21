@@ -30,7 +30,7 @@ def save_source_table(source_table: SourceTable, out_path: Path):
 
 class SourceWriter(BaseSourceProcessor):
     """
-    Class to write a source table to a pair of json files
+    Class to write a source table
     """
 
     base_key = "SRCWRITE"
@@ -44,7 +44,7 @@ class SourceWriter(BaseSourceProcessor):
         self.output_dir_name = output_dir_name
         self.output_dir = Path(output_dir)
 
-    def __str__(self) -> str:
+    def description(self) -> str:
         return (
             f"Processor to save candidates to {self.output_dir_name} "
             f"as '{SOURCE_SUFFIX}' files."

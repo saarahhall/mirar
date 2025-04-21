@@ -38,30 +38,50 @@ def run_scamp(
     ast_ref_cat_path: str | Path,
     output_dir: str | Path,
     timeout_seconds: float = 60.0,
+    make_checkplots: bool = False,
+    checkplot_basename: str = "scamp_checkplot",
+    checkplot_dev: str = None,
 ):
     """
     Function to run scamp.
-    NOTE : By default, the scamp instance here is only designed to run for astrometry.
+    NOTE: By default, the scamp instance here is only designed to run for astrometry.
     This function thus enforces SOLVE_PHOTOM = N as otherwise Scamp behaves weirdly and
     can output FLXSCALE != 1 in the output header. This can cause incosistencies down
     the line, e.g. with Swarp.
-    Args:
-        scamp_list_path:
-        scamp_config_path:
-        ast_ref_cat_path:
-        output_dir:
-        timeout_seconds:
 
-    Returns:
+    :param scamp_list_path: Path to the list of images to run scamp on
+    :param scamp_config_path: Path to the scamp config file
+    :param ast_ref_cat_path: Path to the reference catalog
+    :param output_dir: Output directory
+    :param timeout_seconds: Timeout for scamp
+    :param make_checkplots: Whether to make checkplots
+    :param checkplot_basename: Basename for checkplots
+    :param checkplot_dev: What device to make checkplots
 
+    :return: None
     """
     scamp_cmd = (
         f"scamp @{scamp_list_path} "
         f"-c {scamp_config_path} "
         f"-ASTREFCAT_NAME {ast_ref_cat_path} "
-        f"-VERBOSE_TYPE QUIET -SOLVE_PHOTOM N"
+        f"-VERBOSE_TYPE LOG -SOLVE_PHOTOM N"
     )
 
+    if make_checkplots:
+        scamp_cmd += (
+            f" -CHECKPLOT_TYPE FGROUPS,DISTORTION,ASTR_INTERROR2D,"
+            f"ASTR_INTERROR1D,ASTR_REFERROR2D,ASTR_REFERROR1D,"
+            f"ASTR_CHI2,PHOT_ERROR "
+            f"-CHECKPLOT_NAME {checkplot_basename}_fgroups,"
+            f"{checkplot_basename}_distortion,"
+            f"{checkplot_basename}_astrom_interror2d,"
+            f"{checkplot_basename}_astrom_interror1d,"
+            f"{checkplot_basename}_astrom_referror2d,"
+            f"{checkplot_basename}_astrom_referror1d,"
+            f"{checkplot_basename}_astrom_chi2,"
+            f"{checkplot_basename}_phot_error"
+            f" -CHECKPLOT_DEV {checkplot_dev}"
+        )
     execute(scamp_cmd, output_dir=output_dir, timeout=np.max([60.0, timeout_seconds]))
 
 
@@ -107,30 +127,43 @@ class Scamp(BaseImageProcessor):
         temp_output_sub_dir: str = "scamp",
         cache: bool = False,
         copy_scamp_header_to_image: bool = False,
+        timeout: float = 60.0,
+        make_checkplots: bool = False,
     ):
         super().__init__()
-        self.scamp_config = scamp_config_path
+        self.scamp_config = Path(scamp_config_path)
         self.ref_catalog_generator = ref_catalog_generator
         self.temp_output_sub_dir = temp_output_sub_dir
         self.cache = cache
         self.copy_scamp_header_to_image = copy_scamp_header_to_image
+        self.timeout = timeout
+        self.make_checkplots = make_checkplots
+        self.checkplot_dev = os.getenv("PLPLOT_DEV", None)
+        if self.make_checkplots:
+            if self.checkplot_dev is None:
+                self.make_checkplots = False
+                # Raise a warning
+                logger.warning(
+                    "PLPLOT_DEV environment variable must be set to make scamp "
+                    "checkplots. Will not make any checkplots."
+                )
 
-    def __str__(self) -> str:
+    def description(self) -> str:
         """
-        Description of processor
-        Returns:
+        Function to get description of the processor
 
+        :return: description
         """
         return (
             f"Processor to apply Scamp to images and calculate astrometry, "
-            f"using the config at {self.scamp_config}."
+            f"using the config at {self.scamp_config.name}."
         )
 
     def get_scamp_output_dir(self) -> Path:
         """
         Function to get scamp output directory
-        Returns:
-        Path
+
+        :return: output directory
         """
         return get_output_dir(self.temp_output_sub_dir, self.night_sub_dir)
 
@@ -148,6 +181,10 @@ class Scamp(BaseImageProcessor):
 
         scamp_image_list_path = scamp_output_dir.joinpath(
             Path(batch[0][BASE_NAME_KEY]).name + "_scamp_list.txt",
+        )
+
+        scamp_checkplot_basename = scamp_output_dir.joinpath(
+            Path(batch[0][BASE_NAME_KEY]).name.split(".fits")[0] + "_cplot",
         )
 
         logger.debug(f"Writing file list to {scamp_image_list_path}")
@@ -174,7 +211,10 @@ class Scamp(BaseImageProcessor):
             scamp_config_path=self.scamp_config,
             ast_ref_cat_path=ref_cat_path,
             output_dir=scamp_output_dir,
-            timeout_seconds=30.0 * num_files,
+            timeout_seconds=self.timeout * num_files,
+            make_checkplots=self.make_checkplots,
+            checkplot_basename=scamp_checkplot_basename,
+            checkplot_dev=self.checkplot_dev,
         )
 
         if not self.cache:

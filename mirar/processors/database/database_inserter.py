@@ -44,10 +44,10 @@ class BaseDatabaseInserter(BaseDatabaseProcessor, ABC):
             self.duplicate_protocol in POSTGRES_DUPLICATE_PROTOCOLS
         ), f"Invalid duplicate protocol, must be one of {POSTGRES_DUPLICATE_PROTOCOLS}"
 
-    def __str__(self):
+    def description(self):
         return (
             f"Processor to save "
-            f"{['candidates', 'images'][isinstance(self, BaseImageProcessor)]} "
+            f"{['sources', 'images'][isinstance(self, BaseImageProcessor)]} "
             f"to the '{self.db_table.__name__}' table of "
             f"the '{self.db_name}' Postgres database."
         )

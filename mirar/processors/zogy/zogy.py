@@ -44,7 +44,7 @@ from mirar.paths import (
     core_fields,
     get_output_dir,
 )
-from mirar.processors.base_processor import BaseImageProcessor, PrerequisiteError
+from mirar.processors.base_processor import BaseImageProcessor
 from mirar.processors.zogy.pyzogy import pyzogy
 from mirar.utils.ldac_tools import get_table_from_ldac
 
@@ -53,6 +53,11 @@ logger = logging.getLogger(__name__)
 
 class ZOGYError(ProcessorError):
     """Error derived from running ZOGY"""
+
+
+class ZOGYXMatchError(ProcessorError):
+    """Error when not enough sources are cross-matched between reference and science
+    image"""
 
 
 def default_catalog_purifier(sci_catalog: Table, ref_catalog: Table):
@@ -120,6 +125,9 @@ class ZOGYPrepare(BaseImageProcessor):
         self.x_key = x_key
         self.y_key = y_key
         self.flux_key = flux_key
+
+    def description(self) -> str:
+        return "Processor to prepare images for ZOGY."
 
     def get_sub_output_dir(self) -> Path:
         """
@@ -204,10 +212,10 @@ class ZOGYPrepare(BaseImageProcessor):
         if len(d2d) == 0:
             err = (
                 "No stars matched between science and reference data catalogs. "
-                "Likely there is a huge mismatch in the sensitivites of the two."
+                "Likely there is a huge mismatch in the sensitivites of the two:"
             )
             logger.error(err)
-            raise ZOGYError(err)
+            raise ZOGYXMatchError(err)
 
         xpos_sci = sci_catalog[self.x_key]
         ypos_sci = sci_catalog[self.y_key]
@@ -260,7 +268,12 @@ class ZOGYPrepare(BaseImageProcessor):
         return rms_image
 
     def _apply_to_images(self, batch: ImageBatch) -> ImageBatch:
+
+        output_dir = self.get_sub_output_dir()
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         for image_ind, image in enumerate(batch):
+
             ref_img_path = image[REF_IMG_KEY]
             sci_img_path = image[BASE_NAME_KEY]
 
@@ -299,6 +312,7 @@ class ZOGYPrepare(BaseImageProcessor):
                 ref_img["NAXIS1"] = sci_x_imgsize
                 ref_img["NAXIS2"] = sci_y_imgsize
                 logger.debug(f"Saving trimmed reference image to {ref_img_path}")
+
                 self.save_fits(ref_img, ref_img_path)
 
                 logger.debug("Trimming science weight image")
@@ -448,10 +462,16 @@ class ZOGY(ZOGYPrepare):
         self.output_sub_dir = output_sub_dir
         self.sci_zp_header_key = sci_zp_header_key
 
+    def description(self) -> str:
+        return "Processor to produce difference images using ZOGY."
+
     def _apply_to_images(
         self,
         batch: ImageBatch,
     ) -> ImageBatch:
+        output_dir = self.get_sub_output_dir()
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         diff_batch = ImageBatch()
         for image in batch:
             ref_image_path = image[REF_IMG_KEY]
@@ -472,20 +492,19 @@ class ZOGY(ZOGYPrepare):
             logger.debug(f"Running zogy on image {image[BASE_NAME_KEY]}")
 
             # Load the PSFs into memory
-            with fits.open(sci_psf_path, memmap=False) as img_psf_f:
-                new_psf = img_psf_f[0].data  # pylint: disable=no-member
-                new_psf[new_psf < 0] = 0
+            sci_psf_image = self.open_fits(sci_psf_path)
+            new_psf = sci_psf_image.get_data()  # pylint: disable=no-member
+            new_psf[new_psf < 0] = 0
 
-            with fits.open(ref_psf_path, memmap=False) as ref_psf_f:
-                ref_psf = ref_psf_f[0].data  # pylint: disable=no-member
-                ref_psf[ref_psf < 0] = 0
+            ref_psf_image = self.open_fits(ref_psf_path)
+            ref_psf = ref_psf_image.get_data()  # pylint: disable=no-member
+            ref_psf[ref_psf < 0] = 0
 
-            # Load the sigma images into memory
-            with fits.open(sci_rms_path, memmap=False) as img_sigma_f:
-                new_sigma = img_sigma_f[0].data  # pylint: disable=no-member
+            sci_rms_image = self.open_fits(sci_rms_path)
+            new_sigma = sci_rms_image.get_data()  # pylint: disable=no-member
 
-            with fits.open(ref_rms_path, memmap=False) as ref_sigma_f:
-                ref_sigma = ref_sigma_f[0].data  # pylint: disable=no-member
+            ref_rms_image = self.open_fits(ref_rms_path)
+            ref_sigma = ref_rms_image.get_data()  # pylint: disable=no-member
 
             diff_data, diff_psf_data, scorr_data = pyzogy(
                 new_data=image.get_data(),
@@ -584,4 +603,4 @@ class ZOGY(ZOGYPrepare):
     ):
         check = np.sum([isinstance(x, ZOGYPrepare) for x in self.preceding_steps])
         if check < 1:
-            raise PrerequisiteError("ZOGYPrepare must be run before ZOGY")
+            logger.warning("ZOGYPrepare must be run before ZOGY")

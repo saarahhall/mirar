@@ -1,11 +1,14 @@
 Installation
 ============
 
+You can either install mirar on your machine (using the steps below)
+or you can alternatively follow the separate instructions for docker :doc:`docker`.
 
 Installing the package
 ----------------------
 
 You need to install the package itself. The code is built using python.
+
 We suggest creating a dedicated `conda <https://www.anaconda.com/products/distribution>`_ environment, but you could also use a virtual environment.
 
 Prerequisite: Creating a conda environment
@@ -61,11 +64,24 @@ This method is recommended if you want to contribute to the code.
 Installing python dependencies
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Next you need to actually install mirar. We use `poetry <https://python-poetry.org/>`_ to manage dependencies:
+Next you need to actually install mirar. We use `poetry <https://python-poetry.org/>`_ to manage dependencies.
+Firstly ensure you have poetry installed, in an isolated environment:
 
 .. code-block:: bash
 
-    pip install poetry
+    conda deactivate
+    conda create -n pipx python=3.11
+    conda activate pipx
+    pip install pipx
+    pipx install poetry
+    pipx ensurepath
+
+
+Then exit the terminal and open a new one. You should now be able to run poetry commands.
+You can now install the dependencies. Navigate to the root of the mirar directory,  and run:
+
+.. code-block:: bash
+    conda activate mirar
     poetry install
 
 Lastly, you need to install the `pre-commit hooks <https://pre-commit.com/>`_ (see :doc:`contributing-guide` for more info about what these do):
@@ -118,11 +134,25 @@ astrometry-net folder somewhere on your machine. If you used Homebrew, it should
     /opt/homebrew/Cellar/astrometry-net/
 
 Then, make sure to also grab index files from
-`this directory <https://portal.nersc.gov/project/cosmo/temp/dstn/index-5200/LITE/>`_ and save them under
+`this directory <https://portal.nersc.gov/project/cosmo/temp/dstn/index-5200/LITE/>`_
+
+Once you have downloaded the index files, you can specify the path to the astrometry.net folder and the index files via envirnoment variable:
 
 .. code-block:: bash
 
-    .../astrometry-net/<version>/data
+    export ANET_INDEX_DIR=/path/to/astrometry-net
+
+or specify this via the .env file in the root of the repository.
+
+PostgreSQL
+^^^^^^^^^^
+
+Database management is done through PostgreSQL. You can install it via the `official website <https://www.postgresql.org/download/>`_.
+
+Some pipelines require a database to store the results. If you want to use this functionality, you will need to install PostgreSQL.
+These pipelines also typically require q3c, which is a PostgreSQL extension. You can install it via the `official website <https://github.com/segasai/q3c>`_.
+
+
 
 astromatic software with apt-get (Linux only)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -145,4 +175,4 @@ You can try installing things via conda:
 
 .. code-block:: bash
 
-    conda install -c conda-forge astromatic-source-extractor astromatic-scamp astromatic-swarp astromatic-psfex
+    conda install -c conda-forge astromatic-source-extractor astromatic-scamp astromatic-swarp astromatic-psfex astrometry gsl

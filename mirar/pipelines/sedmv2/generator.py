@@ -121,14 +121,17 @@ def sedmv2_reference_image_resampler(**kwargs) -> Swarp:
     )
 
 
-def sedmv2_reference_sextractor(output_sub_dir: str, gain: float) -> Sextractor:
+def sedmv2_reference_sextractor(
+    output_sub_dir: str,
+) -> Sextractor:  # , gain: float) -> Sextractor:
     """
     Generates a sextractor processor for reference images
 
-    :param output_sub_dir: output sui directory
+    :param output_sub_dir: output sub directory
     :param gain: gain of image
     :return: Sextractor processor
     """
+    gain = 0.322
     return Sextractor(
         gain=gain,
         output_sub_dir=output_sub_dir,
@@ -189,7 +192,6 @@ def sedmv2_photcal_catalog_purifier(
             sources with nonzero Sextractor FLAGS
             sources with PSF mag = -99
             sources near edge of image
-            sources with large SPREAD_MODEL, (likely galaxies)
             [pending] sources near shadow edge
         purifies reference catalog by removing:
             sources with 0 reported error
@@ -209,15 +211,16 @@ def sedmv2_photcal_catalog_purifier(
     y_lower_limit = edge_width_pixels
     y_upper_limit = image.get_data().shape[0] - edge_width_pixels
 
-    # remove sources with spread_model > sm_cutoff (they are likely galaxies)
+    # sources with spread_model > sm_cutoff are likely galaxies
     sm_cutoff = 0.0015
-    # raise warning if most sources don't pass this cut
+    # raise warning if most sources don't pass this cut, but don't remove them
     ind_bad = np.where(sci_catalog["SPREAD_MODEL"] > sm_cutoff)[0]
     if (len(sci_catalog[ind_bad]) / len(sci_catalog)) > 0.4:
         logger.warning(
             f"Many sources with large SPREAD_MODEL value: "
             f"{len(sci_catalog[ind_bad])} out of {len(sci_catalog)} "
-            f"sources. Likely caused by bad observing conditions."
+            f"sources. Likely caused by bad observing conditions. "
+            f"These sources are still used in calibration."
         )
 
     good_sci_sources = (
@@ -227,7 +230,6 @@ def sedmv2_photcal_catalog_purifier(
         & (sci_catalog["X_IMAGE"] < x_upper_limit)
         & (sci_catalog["Y_IMAGE"] > y_lower_limit)
         & (sci_catalog["Y_IMAGE"] < y_upper_limit)
-        & (sci_catalog["SPREAD_MODEL"] < sm_cutoff)
     )
 
     logger.debug(

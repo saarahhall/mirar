@@ -23,6 +23,8 @@ from mirar.paths import (
     REF_IMG_KEY,
     SCI_IMG_KEY,
     SCOR_IMG_KEY,
+    SOURCE_HISTORY_KEY,
+    SOURCE_NAME_KEY,
     XPOS_KEY,
     YPOS_KEY,
     get_output_dir,
@@ -45,10 +47,9 @@ def generate_candidates_table(
     isdiffpos: bool = True,
 ) -> pd.DataFrame:
     """
-    Generate a candidates table from a difference image
+    Generate a candidates table from a difference image and scorr catalog
     :param diff: Difference image
     :param scorr_catalog_path: Path to the scorr catalog
-    :param scorr_stats_catalog_path: Path to the scorr stats catalog
     :param sci_resamp_image_path: Path to the resampled science image
     :param ref_resamp_image_path: Path to the resampled reference image
     :param diff_scorr_path: Path to the scorr image
@@ -74,6 +75,7 @@ def generate_candidates_table(
             raise PrerequisiteError(f"Required key {key} not found in scorr catalog.")
 
     diff_path = diff[LATEST_SAVE_KEY]
+    diff_wght_path = diff[LATEST_WEIGHT_SAVE_KEY]
 
     logger.debug(f"Found {len(det_srcs)} candidates in image.")
 
@@ -84,19 +86,28 @@ def generate_candidates_table(
     scorr_peaks = scorr_data[ypeaks, xpeaks]
     det_srcs["scorr"] = scorr_peaks
 
-    det_srcs = det_srcs[det_srcs["scorr"] > 5]
+    weight_data = fits.getdata(diff_wght_path)
+    det_srcs["weight"] = weight_data[ypeaks, xpeaks]
+
+    weight_percentile_lolim = np.nanpercentile(weight_data[weight_data > 0], q=30)
+    det_srcs = det_srcs[
+        (det_srcs["scorr"] > 4) & (det_srcs["weight"] > weight_percentile_lolim)
+    ]
 
     det_srcs = det_srcs.to_pandas()
 
+    det_srcs[SOURCE_HISTORY_KEY] = [pd.DataFrame() for _ in range(len(det_srcs))]
+    det_srcs[SOURCE_NAME_KEY] = None
+
     logger.debug(
-        f"Filtered to {len(det_srcs)} candidates in image with " f"scorr peak > 5."
+        f"Filtered to {len(det_srcs)} candidates in image with " f"scorr peak > 3."
     )
     # Rename sextractor keys
     ydims, xdims = diff.get_data().shape
     det_srcs["NAXIS1"] = xdims
     det_srcs["NAXIS2"] = ydims
-    det_srcs[XPOS_KEY] = det_srcs["X_IMAGE"] - 1
-    det_srcs[YPOS_KEY] = det_srcs["Y_IMAGE"] - 1
+    det_srcs[XPOS_KEY] = det_srcs["X_IMAGE"]
+    det_srcs[YPOS_KEY] = det_srcs["Y_IMAGE"]
 
     det_srcs["SEXTR_RA"] = det_srcs["ALPHAWIN_J2000"]
     det_srcs["SEXTR_DEC"] = det_srcs["DELTAWIN_J2000"]
@@ -122,7 +133,7 @@ def generate_candidates_table(
     display_sci_ims = []
     display_ref_ims = []
     display_diff_ims = []
-
+    nan_fracs = []
     # Cutouts
     for _, row in det_srcs.iterrows():
         xpeak, ypeak = int(row["xpeak"]), int(row["ypeak"])
@@ -140,10 +151,14 @@ def generate_candidates_table(
         display_sci_ims.append(display_sci_bit)
         display_ref_ims.append(display_ref_bit)
         display_diff_ims.append(display_diff_bit)
+        nan_fracs.append(
+            np.sum(np.isnan(display_diff_cutout)) / np.prod(display_diff_cutout.shape)
+        )
 
     det_srcs["cutout_science"] = display_sci_ims
     det_srcs["cutout_template"] = display_ref_ims
     det_srcs["cutout_difference"] = display_diff_ims
+    det_srcs["maskfrac"] = nan_fracs
 
     det_srcs["isdiffpos"] = isdiffpos
 
@@ -189,7 +204,7 @@ class ZOGYSourceDetector(BaseSourceGenerator):
         self.write_regions = write_regions
         self.detect_negative_sources = detect_negative_sources
 
-    def __str__(self) -> str:
+    def description(self) -> str:
         return (
             "Extracts detected sources from images, "
             "and converts them to a pandas dataframe"
@@ -334,4 +349,4 @@ class ZOGYSourceDetector(BaseSourceGenerator):
     def check_prerequisites(self):
         check = np.sum([isinstance(x, ZOGY) for x in self.preceding_steps])
         if check != 1:
-            raise PrerequisiteError("ZOGY must be run before ZOGYSourceDetector")
+            logger.warning("ZOGY must be run before ZOGYSourceDetector")

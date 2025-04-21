@@ -59,6 +59,7 @@ class CandidatesTable(WinterBase):  # pylint: disable=too-few-public-methods
     deprecated = Column(Boolean, nullable=False, default=False)
     jd = Column(Float, nullable=False)
     utctime = Column(DateTime(timezone=True))
+    sent = Column(Boolean, nullable=False, default=False)
 
     # Image properties
 
@@ -143,7 +144,7 @@ class CandidatesTable(WinterBase):  # pylint: disable=too-few-public-methods
     # Real/bogus properties
 
     rb = Column(Float, nullable=True)
-    rbversion = Column(Float, nullable=True)
+    rbversion = Column(VARCHAR(10), nullable=True)
 
     # Solar system properties
 
@@ -208,6 +209,10 @@ class CandidatesTable(WinterBase):  # pylint: disable=too-few-public-methods
     plxgaiabright = Column(Float, nullable=True)
     ruwegaiabright = Column(Float, nullable=True)
 
+    # ZTF properties
+    ztfname = Column(VARCHAR(12), nullable=True)
+    distztf = Column(Float, nullable=True)
+
 
 class Candidate(BaseDB):
     """
@@ -223,6 +228,8 @@ class Candidate(BaseDB):
 
     jd: float = Field(ge=0)
     utctime: datetime = Field()
+
+    sent: bool = Field(default=False)
 
     diffid: int | None = Field(ge=0, default=None)
     stackid: int = Field(ge=0)
@@ -284,7 +291,7 @@ class Candidate(BaseDB):
     scorr: float = Field(ge=0)
 
     rb: float | None = Field(ge=0, default=None)
-    rbversion: float | None = Field(ge=0, default=None)
+    rbversion: str | None = Field(default=None, max_length=10)
 
     ssdistnr: float | None = Field(ge=0, default=None)
     ssmagnr: float | None = Field(ge=0, default=None)
@@ -339,6 +346,9 @@ class Candidate(BaseDB):
     distgaiabright: float | None = Field(ge=0, default=None)
     plxgaiabright: float | None = Field(default=None)
     ruwegaiabright: float | None = Field(ge=0, default=None)
+
+    ztfname: str | None = Field(default=None, max_length=12)
+    distztf: float | None = Field(ge=0, default=None)
 
     def insert_entry(
         self, duplicate_protocol, returning_key_names=None

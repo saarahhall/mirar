@@ -32,6 +32,7 @@ class CSVLog(BaseImageProcessor):
         export_keys: Optional[list[str]] = None,
         output_sub_dir: str = "",
         output_base_dir: Optional[str] = None,
+        output_name: str = "log",
     ):
         super().__init__()
         if export_keys is None:
@@ -39,21 +40,22 @@ class CSVLog(BaseImageProcessor):
         self.export_keys = export_keys
         self.output_sub_dir = output_sub_dir
         self.output_base_dir = output_base_dir
+        self.output_name = output_name
         self.all_rows = []
 
-    def __str__(self) -> str:
+    def description(self) -> str:
         return (
-            f"Processor to create a CSV log summarising the image metadata, "
-            f"with name '{self.get_output_path().name}'."
+            f"Create a CSV log with {len(self.export_keys)} columns, "
+            f"named {self.get_log_name()}"
         )
 
     def get_log_name(self) -> str:
         """
         Returns the custom log name
 
-        :return: Lof file name
+        :return: Log file name
         """
-        return f"{self.night}_log.csv"
+        return f"{self.night}_{self.output_name}.csv"
 
     def get_output_path(self) -> Path:
         """

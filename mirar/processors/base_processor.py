@@ -25,7 +25,7 @@ from mirar.errors import (
     NoncriticalProcessingError,
     ProcessorError,
 )
-from mirar.io import open_fits, save_fits
+from mirar.io import MissingCoreFieldError, open_fits, save_fits
 from mirar.paths import (
     BASE_NAME_KEY,
     CAL_OUTPUT_SUB_DIR,
@@ -33,6 +33,7 @@ from mirar.paths import (
     PACKAGE_NAME,
     PROC_HISTORY_KEY,
     RAW_IMG_KEY,
+    core_source_fields,
     get_mask_path,
     get_output_path,
     max_n_cpu,
@@ -89,10 +90,28 @@ class BaseProcessor:
         self.err_stack = {}
         self.progress = {}
 
+        # For tracking processing history
+        self.latest_n_input_blocks = 0
+        self.latest_n_input_batches = 0
+        self.latest_n_output_blocks = 0
+        self.latest_n_output_batches = 0
+        self.latest_error_stack = ErrorStack()
+
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls.base_key] = cls
+
+    def description(self) -> str:
+        """
+        Return a description of the processor
+
+        :return: A description of the processor
+        """
+        raise NotImplementedError
+
+    def __str__(self) -> str:
+        return f"[{self.description()}]"
 
     def set_preceding_steps(self, previous_steps: list):
         """
@@ -166,6 +185,9 @@ class BaseProcessor:
         self.passed_batches[cache_id] = {}
         self.err_stack[cache_id] = ErrorStack()
 
+        self.latest_n_input_batches = len(dataset)
+        self.latest_n_input_blocks = sum(len(x) for x in dataset)
+
         if len(dataset) > 0:
             n_cpu = min([self.max_n_cpu, len(dataset)])
 
@@ -208,6 +230,10 @@ class BaseProcessor:
         err_stack = self.err_stack[cache_id]
 
         self.clean_cache(cache_id=cache_id)
+
+        self.latest_n_output_batches = len(dataset)
+        self.latest_n_output_blocks = sum(len(x) for x in dataset)
+        self.latest_error_stack = err_stack
 
         return dataset, err_stack
 
@@ -334,23 +360,28 @@ class ImageHandler:
     def save_fits(
         image: Image,
         path: str | Path,
+        compress: bool = False,
     ):
         """
         Save an Image to path
 
         :param image: Image to save
         :param path: path
+        :param compress: whether to compress the fits file
         :return: None
         """
-        save_fits(image, path)
+        save_fits(image, path, compress=compress)
 
-    def save_mask_image(self, image: Image, img_path: Path) -> Path:
+    def save_mask_image(
+        self, image: Image, img_path: Path, compress: bool = False
+    ) -> Path:
         """
         Saves a mask image, following the astromatic software convention of
         masked value = 0. and non-masked value = 1.
 
         :param image: Science image
         :param img_path: Path of parent image
+        :param compress: Whether to compress the mask image
         :return: Path of mask image
         """
         mask_path = get_mask_path(img_path)
@@ -358,11 +389,18 @@ class ImageHandler:
 
         mask = image.get_mask()
         if LATEST_WEIGHT_SAVE_KEY in image.header:
-            weight_data = self.open_fits(
-                image.header[LATEST_WEIGHT_SAVE_KEY]
-            ).get_data()
-            mask = mask * weight_data
-        self.save_fits(Image(mask.astype(float), header), mask_path)
+
+            path = Path(image.header[LATEST_WEIGHT_SAVE_KEY])
+            if path.exists():
+                weight_data = self.open_fits(
+                    image.header[LATEST_WEIGHT_SAVE_KEY]
+                ).get_data()
+                mask = mask * weight_data
+            else:
+                logger.warning(
+                    f"Could not find weight file {image.header[LATEST_WEIGHT_SAVE_KEY]}"
+                )
+        self.save_fits(Image(mask.astype(float), header), mask_path, compress=compress)
 
         return mask_path
 
@@ -535,6 +573,15 @@ class BaseSourceGenerator(CleanupProcessor, ImageHandler, ABC):
         if len(source_batch) == 0:
             msg = "No sources found in image batch"
             logger.warning(msg)
+
+        for batch in source_batch:
+            cols = batch.get_data().columns
+            for field in core_source_fields:
+                if field not in cols:
+                    raise MissingCoreFieldError(
+                        f"Field {field} not found in source table. "
+                        f"Available fields are {cols}."
+                    )
 
         return source_batch
 

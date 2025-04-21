@@ -2,6 +2,7 @@
 Utility functions for WFCAM
 """
 
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -34,6 +35,8 @@ COMPID_KEY = "COMPID"
 QUERY_RA_KEY = "QRY_RA"
 QUERY_DEC_KEY = "QRY_DEC"
 QUERY_FILT_KEY = "QRY_FILT"
+
+logger = logging.getLogger(__name__)
 
 
 def get_query_coordinates_from_header(
@@ -123,6 +126,20 @@ def combine_headers(primary_header: fits.Header, header_to_append: fits.Header):
     return primary_header
 
 
+def get_wfcam_basename(
+    multiframeid: int,
+    extension_id: int,
+) -> str:
+    """
+    Get the WFCAM basename
+
+    :param multiframeid: Multiframeid of the UKIRT image
+    :param extension_id: Extension id of the UKIRT image
+    :return: Compressed file name
+    """
+    return f"{multiframeid}_{extension_id}.fit"
+
+
 def make_wfcam_image_from_hdulist(
     ukirt_hdulist: [fits.hdu.image.PrimaryHDU, fits.hdu.image.ImageHDU],
     multiframeid: int,
@@ -143,7 +160,7 @@ def make_wfcam_image_from_hdulist(
     # combined_header = ukirt_hdulist[1].header.copy()
 
     # WFCAM convention of compressed file names.
-    basename = f"{multiframeid}_{extension_id}.fit"
+    basename = get_wfcam_basename(multiframeid=multiframeid, extension_id=extension_id)
 
     combined_header = combine_headers(
         primary_header=ukirt_hdulist[1].header,
@@ -243,6 +260,14 @@ def open_compressed_wfcam_fits(path: Path) -> tuple[np.ndarray, fits.Header]:
         :return: data, header
     """
     _, extension_data_list, extension_header_list = open_mef_fits(path)
+    if len(extension_data_list) == 0:
+        err = f"Compressed fits file {path} has no extensions."
+        logger.error(err)
+        raise ValueError(err)
+    if len(extension_data_list) != 1:
+        err = f"Compressed fits file {path} has more than one extension."
+        logger.error(err)
+        raise ValueError(err)
     return extension_data_list[0], extension_header_list[0]
 
 

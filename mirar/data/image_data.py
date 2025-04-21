@@ -49,7 +49,7 @@ You can change this via an environment variable.
 
 .. code-block:: bash
 
-    export USE_WINTER_CACHE = false
+    export USE_MIRAR_CACHE = false
 
 See :doc:`usage` for more information about selecting cache mode,
 and setting the output data directory.
@@ -106,9 +106,6 @@ class Image(DataBlock):
         base = "".join([str(Time.now()), self.get_name(), str(threading.get_ident())])
         name = f"{hashlib.sha1(base.encode()).hexdigest()}.npy"
         return cache.get_cache_dir().joinpath(name)
-
-    def __str__(self):
-        return f"<An {self.__class__.__name__} object, built from {self.get_name()}>"
 
     def set_data(self, data: np.ndarray):
         """

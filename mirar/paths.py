@@ -20,11 +20,10 @@ __version__ = metadata.version(__package__)
 doc_dir = base_code_dir.joinpath("docs/")
 
 # Load environment variables for .env file
-variables_loaded = dotenv.load_dotenv()
+VARIABLES_LOADED = dotenv.load_dotenv()
 
-if variables_loaded:
-    info = "Environment variables were automatically loaded from .env file."
-    logger.info(info)
+if VARIABLES_LOADED:
+    logger.info("Environment variables were automatically loaded from .env file.")
 
 _n_cpu = os.cpu_count()
 if _n_cpu is None:
@@ -40,13 +39,13 @@ default_dir = Path.home()
 _base_raw_dir: str | None = os.getenv("RAW_DATA_DIR")
 
 if _base_raw_dir is None:
-    warning = (
+    WARNING_MSG = (
         "No raw data directory specified. "
         "Run 'export RAW_DATA_DIR=/path/to/data' to set. "
         "The raw data directory will need to be specified manually for path function."
         f"The raw directory is being set to {default_dir}."
     )
-    logger.warning(warning)
+    logger.info(WARNING_MSG)
     base_raw_dir: Path = default_dir
 else:
     base_raw_dir = Path(_base_raw_dir)
@@ -54,22 +53,28 @@ else:
 _base_output_dir = os.getenv("OUTPUT_DATA_DIR")
 
 if _base_output_dir is None:
-    warning = (
+    WARNING_MSG = (
         f"No output data directory specified. "
         f"Run 'export OUTPUT_DATA_DIR=/path/to/data' to set this. "
         f"The output directory is being set to {default_dir}."
     )
-    logger.warning(warning)
+    logger.info(WARNING_MSG)
     base_output_dir = default_dir
 else:
     base_output_dir = Path(_base_output_dir)
 
 # Set up special directories
 TEMP_DIR = base_output_dir.joinpath(f"{PACKAGE_NAME}_temp")
-TEMP_DIR.mkdir(exist_ok=True)
+TEMP_DIR.mkdir(exist_ok=True, parents=True)
 
 RAW_IMG_SUB_DIR = "raw"
 CAL_OUTPUT_SUB_DIR = "calibration"
+
+ml_models_dir = base_output_dir.joinpath("ml_models")
+ml_models_dir.mkdir(exist_ok=True)
+
+config_dir = base_output_dir.joinpath("configs")
+config_dir.mkdir(exist_ok=True)
 
 
 def raw_img_dir(
@@ -344,6 +349,13 @@ core_fields = [
     RAW_IMG_KEY,
     BASE_NAME_KEY,
     EXPTIME_KEY,
+]
+
+core_source_fields = [
+    CAND_RA_KEY,
+    CAND_DEC_KEY,
+    SOURCE_NAME_KEY,
+    SOURCE_HISTORY_KEY,
 ]
 
 MONITOR_EMAIL_KEY = "WATCHDOG_EMAIL"
